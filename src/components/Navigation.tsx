@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client.ts";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 const navItems = [
   { path: "/dashboard", label: "Início", icon: Home },
@@ -43,22 +43,32 @@ export const Navigation = () => {
   const { toast } = useToast();
   const [dashboardsOpen, setDashboardsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { supabase, error: supabaseError } = useSupabaseClient();
 
   useEffect(() => {
+    if (!supabase) return;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUserEmail(session?.user?.email || null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUserEmail(session?.user?.email || null);
-      }
-    );
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserEmail(session?.user?.email || null);
+    });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => data.subscription.unsubscribe();
+  }, [supabase]);
 
   const handleLogout = async () => {
+    if (!supabase) {
+      toast({
+        title: "Erro ao sair",
+        description: supabaseError || "A conexão com o Supabase não está disponível.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     await supabase.auth.signOut();
     toast({
       title: "Logout realizado",
@@ -70,6 +80,19 @@ export const Navigation = () => {
   const isDashboardActive = navItems
     .find((item) => item.path === "/dashboards")
     ?.submenu?.some((sub) => location.pathname === sub.path);
+
+  if (supabaseError) {
+    return (
+      <nav className="border-b border-border bg-card">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Logo className="h-10" />
+            <p className="text-sm text-muted-foreground">{supabaseError}</p>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="border-b border-border bg-card">

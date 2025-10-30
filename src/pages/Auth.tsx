@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,9 +16,11 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { supabase, error: supabaseError } = useSupabaseClient();
 
   useEffect(() => {
-    // Check if user is already logged in
+    if (!supabase) return;
+
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -27,7 +29,6 @@ const Auth = () => {
     };
     checkSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/dashboard");
@@ -35,13 +36,19 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (!supabase) {
+        throw new Error(
+          "A conexão com o Supabase não está configurada. Verifique as variáveis de ambiente."
+        );
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -83,6 +90,20 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (supabaseError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/10 p-4">
+        <Card className="w-full max-w-md p-8 text-center space-y-4">
+          <Logo className="h-20 mx-auto" />
+          <h1 className="text-xl font-semibold">Erro de configuração</h1>
+          <p className="text-sm text-muted-foreground">
+            {supabaseError}
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/10 p-4">

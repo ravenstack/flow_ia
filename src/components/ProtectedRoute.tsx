@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client.ts";
 import { Session } from "@supabase/supabase-js";
+import { useSupabaseClient } from "@/hooks/useSupabaseClient";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,24 +10,39 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const { supabase, error: supabaseError } = useSupabaseClient();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
+    if (!supabase) {
+      if (supabaseError) {
         setLoading(false);
       }
-    );
+      return;
+    }
 
-    // THEN check for existing session
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setLoading(false);
+    });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => data.subscription.unsubscribe();
+  }, [supabase, supabaseError]);
+
+  if (supabaseError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold">Erro de configuração</h2>
+          <p className="text-sm text-muted-foreground">{supabaseError}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
