@@ -1,56 +1,66 @@
-import { useEffect, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { useMemo } from "react";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 interface UseSupabaseClientResult {
   supabase: SupabaseClient<Database> | null;
   error: string | null;
-  loading: boolean;
 }
 
-const errorMessage =
-  "Não foi possível configurar a conexão com o Supabase. Verifique as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no painel do Vercel.";
+let cachedClient: SupabaseClient<Database> | null = null;
+let cachedError: string | null = null;
+
+const buildMissingEnvMessage = (missingVars: string[]) =>
+  `Não foi possível configurar a conexão com o Supabase. Defina ${missingVars.join(
+    " e ",
+  )} no painel do Vercel.`;
+
+const initializeSupabaseClient = (): UseSupabaseClientResult => {
+  if (cachedClient || cachedError) {
+    return { supabase: cachedClient, error: cachedError };
+  }
+
+  if (typeof window === "undefined") {
+    cachedError =
+      "O cliente do Supabase só pode ser inicializado no navegador.";
+    return { supabase: null, error: cachedError };
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const missingVars: string[] = [];
+  if (!supabaseUrl) missingVars.push("VITE_SUPABASE_URL");
+  if (!supabaseKey) missingVars.push("VITE_SUPABASE_PUBLISHABLE_KEY");
+
+  if (missingVars.length > 0) {
+    cachedError = buildMissingEnvMessage(missingVars);
+    console.error(cachedError);
+    return { supabase: null, error: cachedError };
+  }
+
+  try {
+    cachedClient = createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+    cachedError = null;
+    return { supabase: cachedClient, error: null };
+  } catch (error) {
+    console.error("Failed to initialize Supabase client", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erro desconhecido ao criar o cliente do Supabase.";
+    cachedError = `Não foi possível inicializar o Supabase: ${message}`;
+    cachedClient = null;
+    return { supabase: null, error: cachedError };
+  }
+};
 
 export const useSupabaseClient = (): UseSupabaseClientResult => {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadClient = async () => {
-      try {
-        const module = await import("@/integrations/supabase/client");
-        if (!isMounted) {
-          return;
-        }
-
-        setSupabase(module.supabase as SupabaseClient<Database>);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load Supabase client", err);
-        if (!isMounted) {
-          return;
-        }
-
-        setSupabase(null);
-        setError(errorMessage);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadClient();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return { supabase, error, loading };
+  return useMemo(() => initializeSupabaseClient(), []);
 };

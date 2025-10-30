@@ -10,14 +10,15 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const {
-    supabase,
-    error: supabaseError,
-    loading: supabaseLoading,
-  } = useSupabaseClient();
+  const { supabase, error: supabaseError } = useSupabaseClient();
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      if (supabaseError) {
+        setLoading(false);
+      }
+      return;
+    }
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
@@ -30,13 +31,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     });
 
     return () => data.subscription.unsubscribe();
-  }, [supabase]);
-
-  useEffect(() => {
-    if (supabaseError || supabaseLoading) {
-      setLoading(false);
-    }
-  }, [supabaseError, supabaseLoading]);
+  }, [supabase, supabaseError]);
 
   if (supabaseError) {
     return (
@@ -49,7 +44,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (loading || supabaseLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

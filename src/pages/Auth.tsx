@@ -16,11 +16,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const {
-    supabase,
-    error: supabaseError,
-    loading: supabaseLoading,
-  } = useSupabaseClient();
+  const { supabase, error: supabaseError } = useSupabaseClient();
 
   useEffect(() => {
     if (!supabase) return;
@@ -105,19 +101,6 @@ const Auth = () => {
             {supabaseError}
           </p>
         </Card>
-      </div>
-    );
-  }
-
-  if (supabaseLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/10">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">
-            Carregando configurações de autenticação...
-          </p>
-        </div>
       </div>
     );
   }
