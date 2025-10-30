@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,11 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { supabase, error: supabaseError } = useSupabaseClient();
-
-  const isSupabaseReady = useMemo(() => Boolean(supabase), [supabase]);
+  const {
+    supabase,
+    error: supabaseError,
+    loading: supabaseLoading,
+  } = useSupabaseClient();
 
   useEffect(() => {
     if (!supabase) return;
@@ -107,7 +109,7 @@ const Auth = () => {
     );
   }
 
-  if (!isSupabaseReady) {
+  if (supabaseLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="flex flex-col items-center space-y-4 text-center">

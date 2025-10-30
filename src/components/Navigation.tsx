@@ -43,7 +43,11 @@ export const Navigation = () => {
   const { toast } = useToast();
   const [dashboardsOpen, setDashboardsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const { supabase, error: supabaseError } = useSupabaseClient();
+  const {
+    supabase,
+    error: supabaseError,
+    loading: supabaseLoading,
+  } = useSupabaseClient();
 
   useEffect(() => {
     if (!supabase) return;
@@ -88,6 +92,19 @@ export const Navigation = () => {
           <div className="flex h-16 items-center justify-between">
             <Logo className="h-10" />
             <p className="text-sm text-muted-foreground">{supabaseError}</p>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  if (supabaseLoading) {
+    return (
+      <nav className="border-b border-border bg-card">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Logo className="h-10" />
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
           </div>
         </div>
       </nav>

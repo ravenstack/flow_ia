@@ -10,7 +10,11 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { supabase, error: supabaseError } = useSupabaseClient();
+  const {
+    supabase,
+    error: supabaseError,
+    loading: supabaseLoading,
+  } = useSupabaseClient();
 
   useEffect(() => {
     if (!supabase) return;
@@ -29,10 +33,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }, [supabase]);
 
   useEffect(() => {
-    if (supabaseError) {
+    if (supabaseError || supabaseLoading) {
       setLoading(false);
     }
-  }, [supabaseError]);
+  }, [supabaseError, supabaseLoading]);
 
   if (supabaseError) {
     return (
@@ -45,7 +49,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (loading) {
+  if (loading || supabaseLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
